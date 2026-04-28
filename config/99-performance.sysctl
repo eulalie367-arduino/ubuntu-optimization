@@ -1,0 +1,14 @@
+# Performance optimization sysctl parameters
+# Applied in Phase 1 Performance
+
+# Memory management
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+
+# Buffer and cache
+vm.vfs_cache_pressure = 50
+
+# Kernel memory
+kernel.sched_migration_cost_ns = 5000000
+kernel.sched_nr_migrate = 32
