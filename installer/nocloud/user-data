@@ -1,0 +1,132 @@
+#cloud-config
+# Ubuntu 22.04 LTS Autoinstall Configuration
+# Includes full customization + first-boot service integration
+
+autoinstall:
+  version: 1
+
+  # Locale and keyboard
+  locale: en_US
+  keyboard:
+    layout: us
+    variant: ''
+
+  # Network configuration
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        dhcp4: true
+
+  # Storage - custom layout
+  storage:
+    layout:
+      name: custom
+    disks:
+      - device: /dev/sda
+        size: -1
+        partitions:
+          # EFI partition
+          - size: 2147483648  # 2GB in bytes
+            type: EF00
+            flag: boot
+            format: fat32
+            mount: /boot/efi
+
+          # /boot partition
+          - size: 2147483648  # 2GB
+            format: ext4
+            mount: /boot
+
+          # Root partition
+          - size: 32212254720  # 30GB
+            format: ext4
+            mount: /
+
+          # /usr/src partition (for kernel compilation)
+          - size: 53687091200  # 50GB
+            format: ext4
+            mount: /usr/src
+
+          # /var partition
+          - size: 21474836480  # 20GB
+            format: ext4
+            mount: /var
+
+          # /home partition (rest)
+          - size: -1
+            format: ext4
+            mount: /home
+
+  # Package configuration
+  packages:
+    - openssh-server
+    - openssh-client
+    - curl
+    - wget
+    - build-essential
+    - git
+    - vim
+    - net-tools
+    - tmux
+    - htop
+    - iotop
+    - sysstat
+    - python3-pip
+    - python3-venv
+
+  # User configuration
+  identity:
+    hostname: ubuntu-optimized
+    username: ubuntu
+    password: $6$rounds=4096$ELDnmRyWUKqJ1kW0$sXlXD9FVhYvEaDq9OZVxuTKBQP5k3TvFiDUh4KLUJi8R/yqEGc1Uv0cUNhO.MgdFGqQ2VS7e5N8X7K8PqL0  # ubuntu
+
+  # SSH public key (replace with your actual key)
+  ssh:
+    install-server: true
+    allowed-ssh:
+      - public-keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0k7... your-key-here ..."
+    permit-root-login: false
+
+  # Disable cloud-init interactive sections (fully automated)
+  interactive-sections: []
+
+  # Allow only SSH keys for login
+  allow-pw: false
+
+  # Package upgrades
+  apt:
+    preserve_sources_list: false
+    primary:
+      - arches: [amd64, i386]
+        uri: http://archive.ubuntu.com/ubuntu
+      - arches: [default]
+        uri: http://ports.ubuntu.com/ubuntu-ports
+    geoip: true
+    update: true
+    upgrade: true
+
+  # Late commands - copy scripts and enable first-boot service
+  late-commands:
+    # Create directories
+    - mkdir -p /target/usr/local/bin
+    - mkdir -p /target/etc/systemd/system
+    - mkdir -p /target/var/log/ubuntu-optimization
+
+    # Copy scripts from ISO
+    - cp /cdrom/scripts/ubuntu-ultimate-optimization.sh /target/usr/local/bin/
+    - cp /cdrom/scripts/first-boot.sh /target/usr/local/bin/
+    - cp /cdrom/scripts/run-all.sh /target/usr/local/bin/
+    - chmod +x /target/usr/local/bin/*.sh
+
+    # Copy systemd service
+    - cp /cdrom/units/first-boot.service /target/etc/systemd/system/
+
+    # Enable first-boot service
+    - curtin in-target systemctl daemon-reload
+    - curtin in-target systemctl enable first-boot.service
+
+    # Create sentinel file to trigger optimization
+    - touch /target/etc/first-boot-needed
+    - echo "Ubuntu optimization will run on first boot"
